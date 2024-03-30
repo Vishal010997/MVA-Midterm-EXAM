@@ -10,13 +10,14 @@ library(readxl)
 social_media <- read_excel("C:/Users/Vishal/Downloads/MVA_CLASS_COMBINE.xlsx")
 str(social_media)
 social_media_cleaned <- social_media[,-1]
+
 ```
 ```{r}
 #changing column names
 change_cols_index <- c(2,4,6,8,10,12,14,16,17,18,19,20,21,22,23,24)
 change_cols_name <- c("Instagram_Time", "Linkedin_Time", "Snapchat_Time", "Twitter_Time", "Whatsapp_Time", "Youtube_Time", "OTT_Time", "Reddit_Time", "Application Type", "Interview_call_received", "Networking", "Learning", "Mood_Productivity", "Morning_tireness", "Sleep_trouble", "Weekly_Feelings")
-
 colnames(social_media_cleaned)[change_cols_index] <- change_cols_name
+
 
 
 social_media_cleaned
@@ -79,11 +80,18 @@ social_media_cleaned <- social_media_cleaned[, -c(1, 3, 5, 7, 9, 11, 13, 15)]
 social_media_cleaned
 ```
 ```{r}
-#Treating NA in whatsapp column
-mean_value <- mean(social_media_cleaned$Whatsapp_Time, na.rm = TRUE)
-social_media_cleaned$Whatsapp_Time[is.na(social_media_cleaned$Whatsapp_Time)] <- mean_value
+# Loop through each column in time_columns
+social_media_cleaned[time_columns] <- lapply(social_media_cleaned[time_columns], function(x) {
+  # Calculate mean of the column excluding NA values
+  mean_value <- mean(x, na.rm = TRUE)
+  # Replace NA values with the mean
+  x[is.na(x)] <- mean_value
+  return(x)
+})
 
-social_media_cleaned
+# Print the updated data frame
+print(social_media_cleaned)
+
 ```
 ```{r}
 #Scaling the data
@@ -97,6 +105,13 @@ scaled_time_data <- scale(social_media_cleaned[time_columns])
 x_time_columns <- grep("_Time$", names(social_media_cleaned), value = TRUE)
 x_time_columns
 ```
+
+Done With data cleaning above:
+
+Lets start with our analysis
+
+All the time parameters seem to be concentrated between -0.5 and 0
+
 ```{R}
 # Plot histograms for each x_time column
 par(mfrow = c(2, 3))
@@ -109,6 +124,54 @@ for (col in x_time_columns) {
 ```{r}
 scaled_time_data
 ```
+
+Correlation:
+
+High Correlations:
+
+There are strong positive correlations between time spent on various social media platforms, such as:
+
+LinkedIn and Snapchat (0.926)
+
+LinkedIn and YouTube (0.950)
+
+Snapchat and YouTube (0.909)
+
+Twitter and Reddit (0.985)
+
+WhatsApp and LinkedIn (0.839)
+
+
+Moderate Correlations:
+
+There are moderate positive correlations between time spent on platforms like:
+
+Twitter and YouTube (0.452)
+
+Twitter and OTT (0.968)
+
+Snapchat and WhatsApp (0.811)
+
+Instagram and Twitter (0.483)
+
+
+Low Correlations:
+
+Some platforms have relatively low correlations with each other, such as:
+WhatsApp and Twitter (-0.006)
+
+WhatsApp and OTT (0.120)
+
+Snapchat and Instagram (0.099)
+
+
+Interpretation:
+
+Strong positive correlations indicate that users who spend more time on one platform are likely to spend more time on the correlated platform as well.
+
+Negative correlations, though rare here, indicate that as time spent on one platform increases, time spent on the other decreases, or vice versa.
+
+Low correlations suggest that the time spent on one platform doesn't necessarily predict the time spent on another platform.
 ```{R}
 #Performing PCA
 
@@ -116,6 +179,31 @@ scaled_time_data
 cov_matrix <- cov(scaled_time_data)
 cov_matrix
 ```
+
+Eigenvalues:
+
+They represent the variance explained by each principal component.
+The first eigenvalue (4.791) is dominant, indicating the principal component with the most variance.
+
+
+
+Eigenvectors:
+
+They represent the direction of principal components in the original feature space.
+Each column corresponds to a different principal component.
+
+
+
+
+Inference:
+
+The dominant eigenvalue suggests strong variability in the data's first principal component.
+Eigenvectors provide insight into the direction of this variability.
+This decomposition aids dimensionality reduction, prioritizing principal components with higher eigenvalues for retaining data variance.
+
+
+
+
 ```{R}
 # Perform eigenvalue decomposition
 eigen_result <- eigen(cov_matrix)
@@ -127,10 +215,29 @@ eigen_result
 eigenvalues <- eigen_result$values
 eigenvalues
 ```
+
+The first eigenvalue (4.791) is significantly larger than the others, suggesting that the corresponding principal component captures the most variance in the data.
+
+Subsequent eigenvalues (2.357, 0.810, etc.) decrease in magnitude, indicating diminishing importance in explaining the variance.
+
+The magnitude of each eigenvalue reflects the amount of variability accounted for by its corresponding principal component.
+
+Prioritizing principal components based on their eigenvalues guides dimensionality reduction techniques like PCA, preserving the most significant variability while reducing dimensionality.
+
+
 ```{r}
 eigenvectors <- eigen_result$vectors
 eigenvectors
 ```
+
+The number of principal components to consider is determined by counting the eigenvalues greater than 1.
+
+In this case, there are 2 eigenvalues greater than 1, indicating that 2 principal components should be retained.
+
+Principal components with eigenvalues above 1 explain more variance than individual variables and are thus considered significant for preserving the overall variability in the data.
+
+Retaining these 2 principal components allows for dimensionality reduction while still capturing a substantial portion of the data's variability.
+
 ```{R}
 #To find number of principal components to consider:
 #1 Eigenvalue criterion
@@ -138,11 +245,22 @@ eigenvalues <- eigen_result$values
 num_components <- sum(eigenvalues > 1)
 print(num_components)
 ```
+
+As per the Scree plot we can observe that ideally using 2 PCA's is best as 2 points are above reference line and there is a strong elbow at 2nd PCA
+
 ```{R}
 #2 Scree plot
 plot(eigenvalues, type = "b", main = "Scree Plot")
 abline(h = 1, col = "red", lty = 2)
 ```
+
+Each row corresponds to an observation, and each column represents a transformed feature.
+
+The values in the transformed data represent the coordinates of observations in a new feature space defined by the first three principal components.
+
+Retaining only three principal components achieves dimensionality reduction while preserving a significant portion of the original data's variance.
+
+In essence, the transformed data simplifies the original dataset into a lower-dimensional space, facilitating analysis while retaining essential patterns.
 ```{R}
 #Retaining 3 PC
 n_components <- 3  
@@ -159,13 +277,29 @@ my_palette <- colorRampPalette(brewer.pal(9, "YlOrRd"))
 # Visualize the loadings matrix with the specified color palette
 heatmap(loadings, Rowv = NA, Colv = NA, col = my_palette(256), scale = "column", margins = c(5, 10))
 ```
+
+PC2 and PC2 seem to be concentrated above 0 towards positive and some outliers at minus and one above 4 value of PC1
+
 ```{R}
 # Scatter plot of the first two principal components
 plot(transformed_data[, 3], transformed_data[, 1], xlab = "PC1", ylab = "PC2", 
      main = "Scatter Plot of PC1 vs PC2")
 
+```
+
+Below bioplot infers that Insta, OTT and Twitter are highly correlated in PC2
+
+Rest are negatively correlated in PC2 AND all values are towards neagtive of PC1
+
+```{R}
+
 biplot(prcomp(scaled_time_data), scale = 0)
 ```
+
+
+Cumulative Variance Plot":
+
+Explains that best variance is observed till 3 PC'S
 ```{r}
 # Cumulative Variance Plot
 cumulative_variance <- cumsum(eigenvalues) / sum(eigenvalues)
@@ -180,6 +314,28 @@ scatterplot3d(transformed_data[, 1], transformed_data[, 2], transformed_data[, 3
               xlab = "PC1", ylab = "PC2", zlab = "PC3",
               main = "3D Scatter Plot of PC1, PC2, and PC3")
 ```
+
+LinkedIn and Snapchat:
+
+There is a strong positive correlation between the time spent on LinkedIn and Snapchat.
+Users who spend more time on LinkedIn are likely to spend a considerable amount of time on Snapchat, and vice versa.
+LinkedIn and YouTube:
+
+A significant positive correlation exists between the time spent on LinkedIn and YouTube.
+Users who engage more with LinkedIn content are also likely to spend substantial time on YouTube, and vice versa.
+Snapchat and YouTube:
+
+There is a strong positive correlation between the time spent on Snapchat and YouTube.
+Users who use Snapchat frequently are also likely to spend a significant amount of time on YouTube, and vice versa.
+Twitter and Reddit:
+
+A very strong positive correlation exists between the time spent on Twitter and Reddit.
+Users who are active on Twitter tend to be similarly active on Reddit, and vice versa.
+WhatsApp and LinkedIn:
+
+There is a notable positive correlation between the time spent on WhatsApp and LinkedIn.
+Users who dedicate more time to WhatsApp messaging also tend to spend considerable time on LinkedIn, and vice versa.
+
 ```{R}
 # Heatmap of Correlation Matrix
 corr_matrix <- cor(scaled_time_data)
@@ -200,10 +356,31 @@ for (i in 1:max_k) {
   wcss[i] <- kmeans_model$tot.withinss
 }
 ```
+
+As per the elbow plot Best output for k-means cluster is yielded at 3-4 clusters as elbow is present at that point
+
+Sum of square used to check the performance
 ```{R}
 # Plot the elbow method
 plot(1:max_k, wcss, type = "b", xlab = "Number of clusters (k)", ylab = "Within-cluster sum of squares (WCSS)")
 ```
+```{r}
+scaled_time_data
+
+# Assuming your data is stored in a matrix named 'social_media_data'
+# Use max.col to get the index of the maximum value in each column
+max_indices <- max.col(scaled_time_data, ties.method = "first")
+
+# Create a vector to store the column names corresponding to the maximum values
+max_column <- colnames(scaled_time_data)[max_indices]
+
+# Add the max_column vector as a new column to the data matrix
+social_media_data_with_max <- cbind(scaled_time_data, max_column)
+
+social_media_data_with_max
+```
+
+
 ```{R}
 # Step 1: Choose the number of clusters (K)
 K <- 6 
@@ -357,7 +534,149 @@ for (i in 1:max(kmeans5.sm$cluster)) {
 print(cluster_matrices)
 ```
 
-
 ```{R}
+#Factor Analysis
+library(psych)
 
-```  
+fit.pc_sm <- principal(scaled_time_data, nfactors=4, rotate="varimax")
+fit.pc_sm
+```
+```{r}
+# Extract eigenvalues
+eigenvalues <- fit.pc_sm$values
+# Create scree plot
+plot(1:length(eigenvalues), eigenvalues, type="b", 
+      xlab="Component Number", ylab="Eigenvalues", main="Scree Plot")
+# Add a horizontal line at y = 1 for reference (Kaiser's criterion)
+abline(h=1, col="red", lty=2)
+# Add text label for Kaiser's criterion
+text(length(eigenvalues), 1, "Kaiser's Criterion (Eigenvalue = 1)", pos=4, col="red")
+
+round(fit.pc_sm$values, 3)
+fit.pc_sm$loadings
+```
+```{r}
+# Loadings with more digits
+for (i in c(1,2,3,4)) { print(fit.pc_sm$loadings[[1,i]])}
+# Communalities
+fit.pc_sm$communality
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc_sm$scores
+```
+```{r}
+#FA model
+fa.plot(fit.pc_sm)
+```
+```{R}
+fa.diagram(fit.pc_sm)
+```
+```{r}
+vss(scaled_time_data)
+```
+```{R}
+# Computing Correlation Matrix
+corrm.sm <- cor(scaled_time_data)
+corrm.sm
+plot(corrm.sm)
+```
+```{R}
+sm_pca <- prcomp(scaled_time_data, scale=TRUE)
+summary(sm_pca)
+plot(sm_pca)
+
+# A table containing eigenvalues and %'s accounted, follows. Eigenvalues are the sdev^2
+(eigen_sm <- round(sm_pca$sdev^2,3))
+round(fit.pc_sm$values, 3)
+names(eigen_sm) <- paste("PC",1:8,sep="")
+eigen_sm
+
+sumlambdas <- sum(eigen_sm)
+sumlambdas
+
+propvar <- round(eigen_sm/sumlambdas,2)
+propvar
+
+cumvar_sm <- cumsum(propvar)
+cumvar_sm
+
+matlambdas <- rbind(eigen_sm,propvar,cumvar_sm)
+matlambdas
+
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+rownames(matlambdas)
+
+eigvec.sm <- sm_pca$rotation
+print(sm_pca)
+
+# Taking the first two PCs to generate linear combinations for all the variables with two factors
+pcafactors.sm <- eigvec.sm[,1:2]
+pcafactors.sm
+
+# Multiplying each column of the eigenvector’s matrix by the square-root of the corresponding eigenvalue in order to get the factor loadings
+unrot.fact.sm <- sweep(pcafactors.sm,MARGIN=2,sm_pca$sdev[1:2],`*`)
+unrot.fact.sm
+
+# Computing communalities
+communalities.sm <- rowSums(unrot.fact.sm^2)
+communalities.sm
+
+# Performing the varimax rotation. The default in the varimax function is norm=TRUE thus, Kaiser normalization is carried out
+rot.fact.sm <- varimax(unrot.fact.sm)
+#View(unrot.fact.fish)
+rot.fact.sm
+
+# The print method of varimax omits loadings less than abs(0.1). In order to display all the loadings, it is necessary to ask explicitly the contents of the object $loadings
+fact.load.sm <- rot.fact.sm$loadings[1:8,1:2]
+fact.load.sm
+
+as.matrix(scaled_time_data)%*%fact.load.sm%*%solve(t(fact.load.sm)%*%fact.load.sm)
+
+# Show the columns (variables) that go into each factor
+for (i in 1:ncol(fact.load.sm)) {
+  cat("Variables for Factor PC", i, ":\n")
+  print(rownames(fact.load.sm)[order(abs(fact.load.sm[, i]), decreasing = TRUE)])
+  cat("\n")
+}
+
+
+# Convert factor loadings matrix to a data frame
+fact_loadings_df <- as.data.frame(fact.load.sm)
+# Add a column for variable names
+fact_loadings_df$Variable <- rownames(fact_loadings_df)
+# Reshape data for plotting
+fact_loadings_df_long <- reshape2::melt(fact_loadings_df, id.vars = "Variable", variable.name = "Factor")
+
+library(ggplot2)
+#HeatMap
+ggplot(fact_loadings_df_long, aes(x = Factor, y = Variable, fill = value)) +
+     geom_tile() +
+     scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+     labs(x = "Factor", y = "Variable", title = "Factor Loadings Heatmap") +
+     theme_minimal() +
+     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#BarPlot
+ggplot(fact_loadings_df_long, aes(x = Factor, y = value, fill = Variable)) +
+     geom_bar(stat = "identity", position = "dodge") +
+     labs(x = "Factor", y = "Factor Loading", fill = "Variable", title = "Factor Loadings Bar Plot") + theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1),
+           legend.position = "right")
+
+```
+
+Factor Analysis Insights:
+
+The factor loadings depict the correlation between each social media platform and the underlying factors. Higher absolute loadings indicate a stronger association between the platform and the factor.
+Factors with loadings surpassing a certain threshold (e.g., 0.3 or 0.4) may be considered significant contributors to the respective factors.
+PCA Insights:
+
+PCA identifies patterns and relationships among the social media platforms, condensing the information into principal components.
+Each principal component captures a portion of the total variance in the data, with higher proportions indicating greater importance in explaining the variability.
+The transformed data represents the original data projected onto the principal components, facilitating dimensionality reduction while retaining most of the variance.
+Comparison with the Class:
+
+Comparing individual factor loadings or principal component scores with those of the class can unveil similarities or discrepancies in social media usage patterns.
+Similarities across factors/components may imply common trends or preferences within the class, while differences could signify unique behaviors or preferences.
+Interpretation of Clustering Results:
+
+Clustering outcomes offer insights into how individuals or groups of individuals (clusters) exhibit similar behaviors across various social media platforms.
+Understanding cluster characteristics can inform targeted marketing strategies, personalized recommendations, or segmentation strategies based on social media usage patterns.
