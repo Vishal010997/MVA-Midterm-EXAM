@@ -365,9 +365,12 @@ Sum of square used to check the performance
 plot(1:max_k, wcss, type = "b", xlab = "Number of clusters (k)", ylab = "Within-cluster sum of squares (WCSS)")
 ```
 ```{r}
-scaled_time_data
 
-# Assuming your data is stored in a matrix named 'social_media_data'
+
+# Convert scaled_time_data to numeric
+scaled_time_data <- apply(scaled_time_data, 2, as.numeric)
+
+# Assuming your data is stored in a matrix named 'scaled_time_data'
 # Use max.col to get the index of the maximum value in each column
 max_indices <- max.col(scaled_time_data, ties.method = "first")
 
@@ -377,8 +380,37 @@ max_column <- colnames(scaled_time_data)[max_indices]
 # Add the max_column vector as a new column to the data matrix
 social_media_data_with_max <- cbind(scaled_time_data, max_column)
 
+# Verify the conversion
+str(social_media_data_with_max)
 social_media_data_with_max
 ```
+```{r}
+# Assuming your data is stored in a matrix named 'social_media_data_with_max'
+
+# Get the names of all columns
+all_columns <- colnames(social_media_data_with_max)
+
+# Convert all columns to numeric except max_column
+for (col in names(social_media_data_with_max)) {
+  if (col != "max_column") {
+    social_media_data_with_max[, col] <- as.numeric(social_media_data_with_max[, col])
+  }
+}
+
+# Verify the conversion
+str(social_media_data_with_max)
+social_media_data_with_max
+```
+Cluster Centers: The cluster centers represent the average values of each variable (Instagram_Time, Linkedin_Time, Snapchat_Time, Twitter_Time, Whatsapp_Time, Youtube_Time, OTT_Time, Reddit_Time) within each cluster. These values indicate the typical behavior or usage pattern of each cluster regarding different social media platforms.
+
+Cluster 1: Moderate usage across most platforms, with slightly higher usage on Instagram, LinkedIn, and Snapchat.
+Cluster 2: Low usage across all platforms except for moderate usage on Reddit.
+Cluster 3: Moderate to high usage on Twitter and Snapchat, with relatively low usage on other platforms.
+Cluster 4: Very high usage on LinkedIn, Snapchat, and Whatsapp, with low usage on other platforms.
+Cluster 5: Very high usage on Instagram and Reddit, moderate usage on other platforms.
+Cluster 6: Very high usage on OTT platforms, moderate usage on other platforms.
+
+
 
 
 ```{R}
@@ -391,6 +423,14 @@ print(kmeans_result$centers)
 # Step 4: View cluster assignments for each data point
 print(kmeans_result$cluster)
 ```
+
+Clustering Vector: This vector indicates the cluster assignment for each data point (row) in the dataset. In this analysis, data points are assigned to either Cluster 1 or Cluster 2 based on their similarity to the cluster means.
+
+In the given example, the clustering vector indicates that the first data point is assigned to Cluster 2, while the remaining data points are assigned to Cluster 1.
+Percentage of Variation Accounted For: This metric measures how well the clustering algorithm explains the variance in the data. It is calculated as the percentage reduction in within-cluster sum of squares (WSS) relative to the total sum of squares (TSS).
+
+In this case, the percentage of variation accounted for by the two clusters is computed as 82.5%. This suggests that the clustering algorithm effectively captured the underlying patterns in the data, explaining a substantial portion of the variance.
+
 ```{r}
 # Computing the percentage of variation accounted for. Two clusters
 (kmeans2.sm <- kmeans(scaled_time_data,2,nstart = 10))
@@ -398,6 +438,11 @@ perc.var.2 <- round(100*(1 - kmeans2.sm$betweenss/kmeans2.sm$totss),1)
 names(perc.var.2) <- "Perc. 2 clus"
 perc.var.2
 ```
+
+Cluster 1: Exceptional engagement across all platforms.
+Cluster 2: Majority with lower engagement.
+Cluster 3: Moderate engagement, mainly on Instagram, LinkedIn, and Twitter.
+The analysis captures 16.4% of the total variance.
 ```{R}
 # Computing the percentage of variation accounted for. Three clusters
 (kmeans3.sm <- kmeans(scaled_time_data,3,nstart = 10))
@@ -429,12 +474,23 @@ perc.var.6
 ```{R}
 attributes(perc.var.6)
 ```
+46.6% of the variance for 2 clusters.
+16.4% for 3 clusters.
+3.5% for 4 clusters.
+2.5% for 5 clusters.
+1.9% for 6 clusters.
+
+
+A two-cluster solution captures the highest variance at 46.6%, suggesting a meaningful partition of the data. As the number of clusters increases, the additional explained variance diminishes, indicating diminishing returns beyond two clusters.
+
 ```{r}
 Variance_List <- c(perc.var.2,perc.var.3,perc.var.4,perc.var.5,perc.var.6)
 
 Variance_List
 plot(Variance_List)
 ```
+
+As per the below elbow plot 4 cluster centroid are the best due to strong elbow
 ```{R}
 #elbow method
 # Perform K-means clustering for different numbers of clusters
@@ -469,6 +525,12 @@ for (k in 2:6) {
 # Plot the silhouette scores
 plot(2:6, sil_width, type = "b")
 ```
+
+
+
+The cluster membership indicates that each data point belongs to one of five distinct groups, with the majority of data points being assigned to clusters 2 and 4. This distribution suggests that there are dominant patterns or behaviors shared among a significant portion of the data, while the remaining clusters represent smaller, possibly more specialized segments. 
+
+Further analysis of the characteristics of each cluster can provide insights into the underlying patterns present in the data and guide targeted decision-making or intervention strategies tailored to the needs of each group.
 ```{r}
 #2. Show the membership for each cluster
 optimal_num_clusters <- 5
@@ -481,6 +543,11 @@ cluster_membership <- kmeans_model$cluster
 # Print the cluster membership for each data point
 print(cluster_membership)
 ```
+
+As per below observations:
+
+Clusters indicate Cluster 2 and 4 seem to lie towards left bottom
+
 ```{R}
 # Scatter plot of the data with clusters colored by membership
 plot(scaled_time_data[, 1], scaled_time_data[, 2], 
@@ -515,6 +582,17 @@ plot(PC1, PC2,
 legend("topright", legend = paste("Cluster", 1:optimal_num_clusters), 
        col = 1:optimal_num_clusters, pch = 16, cex = 1.2, title = "Clusters")
 ```
+
+
+Cluster 1 (clus1): Low engagement across all platforms, indicating minimal or sporadic activity.
+
+Cluster 2 (clus2): Below-average engagement on various platforms, with values mostly scaled around -0.3 to -0.5.
+
+Cluster 3 (clus3): High engagement across all platforms, particularly on Instagram, Linkedin, Snapchat, and Twitter.
+
+Cluster 4 (clus4): High engagement, especially on Linkedin, suggesting professional or business-focused users.
+
+Cluster 5 (clus5): Mixed engagement, with exceptionally high activity on Instagram and relatively lower engagement on other platforms.
 ```{r}
 # Saving five k-means clusters in a list
 # Initialize a list to store matrices for each cluster
